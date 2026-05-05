@@ -50,6 +50,21 @@ export const useSettings = create<{
 }));
 
 /**
+ * Auth
+ */
+export const useAuth = create<{
+  googleAccessToken: string | null;
+  setGoogleAccessToken: (token: string | null) => void;
+}>(set => ({
+  googleAccessToken: typeof window !== 'undefined' ? localStorage.getItem('googleAccessToken') : null,
+  setGoogleAccessToken: token => {
+    if (token) localStorage.setItem('googleAccessToken', token);
+    else localStorage.removeItem('googleAccessToken');
+    set({ googleAccessToken: token });
+  }
+}));
+
+/**
  * UI
  */
 export const useUI = create<{

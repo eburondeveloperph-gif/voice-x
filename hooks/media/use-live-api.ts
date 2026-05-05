@@ -24,7 +24,7 @@ import { LiveConnectConfig, Modality, LiveServerToolCall } from '@google/genai';
 import { AudioStreamer } from '../../lib/audio-streamer';
 import { audioContext } from '../../lib/utils';
 import VolMeterWorket from '../../lib/worklets/vol-meter';
-import { useLogStore, useSettings } from '@/lib/state';
+import { useLogStore, useSettings, useAuth } from '@/lib/state';
 
 export type UseLiveApiResults = {
   client: GenAILiveClient;
@@ -112,7 +112,7 @@ export function useLiveApi({
           isFinal: true,
         });
 
-        const token = localStorage.getItem('googleAccessToken');
+        const token = useAuth.getState().googleAccessToken;
         let resultData: any = { result: "ok" };
 
         if (!token) {

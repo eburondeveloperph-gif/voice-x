@@ -1,7 +1,8 @@
 import { auth } from '../firebase';
+import { useAuth } from './state';
 
 export async function googleFetch(url: string, options: RequestInit = {}, passedToken?: string) {
-  const token = passedToken || localStorage.getItem('googleAccessToken');
+  const token = passedToken || useAuth.getState().googleAccessToken;
 
   if (!token) {
     throw new Error('Google services are not connected. Sign in with Google again from Profile.');
@@ -16,9 +17,9 @@ export async function googleFetch(url: string, options: RequestInit = {}, passed
   });
 
   if (res.status === 401 || res.status === 403) {
-    localStorage.removeItem('googleAccessToken');
+    useAuth.getState().setGoogleAccessToken(null);
     throw new Error(
-      'Google permission expired or was revoked. Sign in with Google again from Profile to reconnect Gmail, Drive, and Calendar.'
+      'Google permission expired or was revoked. Please use the Reconnect Google button to reconnect Gmail, Drive, and Calendar.'
     );
   }
 

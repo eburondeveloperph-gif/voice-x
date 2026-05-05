@@ -40,7 +40,9 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
         driveFile = await uploadTextFileToDrive(
           htmlFile.htmlPreviewFilename,
           htmlFile.html,
-          'text/html'
+          'text/html',
+          undefined,
+          accessToken
         );
       }
 
@@ -54,7 +56,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
             mimeType: 'text/html',
             base64Content: utf8ToBase64(htmlFile.html),
           },
-        });
+        }, accessToken);
       }
 
       return {
@@ -319,13 +321,13 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
     }
 
     case 'docs_create': {
-      const doc = await createGoogleDoc(args.title, args.content || '');
+      const doc = await createGoogleDoc(args.title, args.content || '', accessToken);
 
       let pdfDownload: any = {};
       let emailResult: any = null;
 
       if (args.exportPdf) {
-        const pdfBlob = await exportDriveFile(doc.documentId, 'application/pdf');
+        const pdfBlob = await exportDriveFile(doc.documentId, 'application/pdf', accessToken);
         const downloadData = await makeBlobDownloadData(pdfBlob);
 
         pdfDownload = {
@@ -345,7 +347,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
               mimeType: 'application/pdf',
               base64Content: arrayBufferToBase64(buffer),
             },
-          });
+          }, accessToken);
         }
       }
 
@@ -628,7 +630,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
             mimeType: 'application/pdf',
             base64Content: arrayBufferToBase64(pdfBuffer),
           },
-        });
+        }, accessToken);
       }
 
       return {
