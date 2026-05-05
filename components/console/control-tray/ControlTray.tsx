@@ -218,6 +218,16 @@ function ControlTray({ children, onVideoActive }: ControlTrayProps) {
       )}
       <nav className={cn('actions-nav')}>
         <button
+          ref={connectButtonRef}
+          className={cn('action-button connect-toggle', { connected })}
+          onClick={connected ? disconnect : connect}
+          title={connectButtonTitle}
+        >
+          <span className="material-symbols-outlined filled">
+            {connected ? 'pause' : 'play_arrow'}
+          </span>
+        </button>
+        <button
           className={cn('action-button mic-button', { disabled: !connected })}
           onClick={handleMicClick}
           title={micButtonTitle}
@@ -240,20 +250,18 @@ function ControlTray({ children, onVideoActive }: ControlTrayProps) {
             <span className="material-symbols-outlined filled">videocam_off</span>
           )}
         </button>
-        {(videoActive || screenActive) && (
-          <button
-            className={cn('action-button screen-button')}
-            onClick={handleScreenClick}
-            aria-label={screenActive ? 'Stop Screen Share' : 'Start Screen Share'}
-            title={screenActive ? 'Stop Screen Share' : 'Start Screen Share'}
-          >
-            {screenActive ? (
-              <span className="material-symbols-outlined filled">stop_screen_share</span>
-            ) : (
-              <span className="material-symbols-outlined filled">present_to_all</span>
-            )}
-          </button>
-        )}
+        <button
+          className={cn('action-button screen-button')}
+          onClick={handleScreenClick}
+          aria-label={screenActive ? 'Stop Screen Share' : 'Start Screen Share'}
+          title={screenActive ? 'Stop Screen Share' : 'Start Screen Share'}
+        >
+          {screenActive ? (
+            <span className="material-symbols-outlined filled">stop_screen_share</span>
+          ) : (
+            <span className="material-symbols-outlined filled">present_to_all</span>
+          )}
+        </button>
         {videoActive && connected && (
           <button
             className={cn('action-button cameraswitch-button')}
@@ -272,24 +280,9 @@ function ControlTray({ children, onVideoActive }: ControlTrayProps) {
         >
           <span className="material-symbols-outlined">refresh</span>
         </button>
+        {connected && <span className="text-indicator mx-2 ml-4">Streaming</span>}
         {children}
       </nav>
-
-      <div className={cn('connection-container', { connected })}>
-        <div className="connection-button-container">
-          <button
-            ref={connectButtonRef}
-            className={cn('action-button connect-toggle', { connected })}
-            onClick={connected ? disconnect : connect}
-            title={connectButtonTitle}
-          >
-            <span className="material-symbols-outlined filled">
-              {connected ? 'pause' : 'play_arrow'}
-            </span>
-          </button>
-        </div>
-        <span className="text-indicator">Streaming</span>
-      </div>
     </section>
   );
 }

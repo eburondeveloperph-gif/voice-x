@@ -97,7 +97,10 @@ export default function StreamingConsole() {
           },
         ],
       },
-      tools: enabledTools,
+      tools: [
+        { googleSearch: {} },
+        ...enabledTools,
+      ],
     };
 
     setConfig(config);

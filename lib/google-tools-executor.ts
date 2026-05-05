@@ -76,13 +76,17 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       const queryText = args?.query || '';
       const limit = Math.min(Number(args?.limit || 10), 20);
       const list = await googleJson(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}${queryText ? `&q=${encodeURIComponent(queryText)}` : ''}`
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}${queryText ? `&q=${encodeURIComponent(queryText)}` : ''}`,
+        {},
+        accessToken
       );
 
       const messages = await Promise.all(
         (list.messages ||[]).map(async (m: any) => {
           const msg = await googleJson(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,
+            {},
+            accessToken
           );
 
           const headers = msg.payload?.headers ||[];
@@ -112,7 +116,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
         body: args.body || '',
         cc: args.cc,
         bcc: args.bcc,
-      });
+      }, accessToken);
 
       return { toolName, executedAt, status: 'completed', messageId: result.id, threadId: result.threadId };
     }
@@ -133,7 +137,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       const result = await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
         method: 'POST',
         body: JSON.stringify({ message: { raw } }),
-      });
+      }, accessToken);
 
       return { toolName, executedAt, status: 'completed', draftId: result.id, message: result.message };
     }
@@ -141,7 +145,9 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
     case 'calendar_check_schedule': {
       const range = readableDateRange(args?.date, args?.timeMin, args?.timeMax);
       const events = await googleJson(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=20&timeMin=${encodeURIComponent(range.timeMin)}&timeMax=${encodeURIComponent(range.timeMax)}`
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=20&timeMin=${encodeURIComponent(range.timeMin)}&timeMax=${encodeURIComponent(range.timeMax)}`,
+        {},
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', range, events: events.items ||[] };
@@ -177,7 +183,8 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
         {
           method: 'POST',
           body: JSON.stringify(body),
-        }
+        },
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', event: result };
@@ -189,7 +196,9 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       if (!eventId && args.searchQuery) {
         const now = new Date().toISOString();
         const found = await googleJson(
-          `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=10&timeMin=${encodeURIComponent(now)}&q=${encodeURIComponent(args.searchQuery)}`
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=10&timeMin=${encodeURIComponent(now)}&q=${encodeURIComponent(args.searchQuery)}`,
+          {},
+          accessToken
         );
 
         eventId = found.items?.[0]?.id;
@@ -197,7 +206,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
 
       if (!eventId) throw new Error('No calendar event found to update.');
 
-      const current = await googleJson(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`);
+      const current = await googleJson(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {}, accessToken);
 
       const patched = {
         ...current,
@@ -211,7 +220,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       const result = await googleJson(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
         method: 'PUT',
         body: JSON.stringify(patched),
-      });
+      }, accessToken);
 
       return { toolName, executedAt, status: 'completed', event: result };
     }
@@ -232,7 +241,9 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       }
 
       const result = await googleJson(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name contains '${escaped}' and trashed = false${mimeClause}`)}&fields=files(id,name,mimeType,webViewLink,webContentLink,modifiedTime,size)&pageSize=${limit}`
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name contains '${escaped}' and trashed = false${mimeClause}`)}&fields=files(id,name,mimeType,webViewLink,webContentLink,modifiedTime,size)&pageSize=${limit}`,
+        {},
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', files: result.files ||[] };
@@ -242,14 +253,16 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       let fileId = args.fileId;
 
       if (!fileId && args.fileName) {
-        const found = await searchDriveFirst(args.fileName);
+        const found = await searchDriveFirst(args.fileName, accessToken);
         fileId = found?.id;
       }
 
       if (!fileId) throw new Error('No file id or matching file name found.');
 
       const meta = await googleJson(
-        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink,webContentLink,size`
+        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink,webContentLink,size`,
+        {},
+        accessToken
       );
 
       const exportMimeType = args.exportMimeType || (
@@ -263,7 +276,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       );
 
       if (meta.mimeType?.startsWith('application/vnd.google-apps') && exportMimeType) {
-        const blob = await exportDriveFile(fileId, exportMimeType);
+        const blob = await exportDriveFile(fileId, exportMimeType, accessToken);
         const text = exportMimeType.startsWith('text/') ? await blob.text() : '';
         const downloadData = await makeBlobDownloadData(blob);
 
@@ -279,7 +292,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
         };
       }
 
-      const res = await googleFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+      const res = await googleFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {}, accessToken);
       const blob = await res.blob();
       const downloadData = await makeBlobDownloadData(blob);
 
@@ -298,7 +311,8 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
         args.fileName,
         args.content || '',
         args.mimeType || 'text/plain',
-        args.folderId
+        args.folderId,
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', file: result };
@@ -350,14 +364,14 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       let documentId = args.documentId;
 
       if (!documentId && args.title) {
-        const found = await searchDriveFirst(args.title);
+        const found = await searchDriveFirst(args.title, accessToken);
         documentId = found?.id;
       }
 
       if (!documentId) throw new Error('No document id or matching title found.');
 
       if (args.mode === 'replace') {
-        const doc = await googleJson(`https://docs.googleapis.com/v1/documents/${documentId}`);
+        const doc = await googleJson(`https://docs.googleapis.com/v1/documents/${documentId}`, {}, accessToken);
         const endIndex = doc.body?.content?.slice(-1)?.[0]?.endIndex || 1;
 
         await googleJson(`https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`, {
@@ -377,7 +391,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
               },
             ],
           }),
-        });
+        }, accessToken);
       } else {
         await googleJson(`https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`, {
           method: 'POST',
@@ -391,11 +405,13 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
               },
             ],
           }),
-        });
+        }, accessToken);
       }
 
       const meta = await googleJson(
-        `https://www.googleapis.com/drive/v3/files/${documentId}?fields=id,name,mimeType,webViewLink`
+        `https://www.googleapis.com/drive/v3/files/${documentId}?fields=id,name,mimeType,webViewLink`,
+        {},
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', documentId, file: meta };
@@ -405,7 +421,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       let spreadsheetId = args.spreadsheetId;
 
       if (!spreadsheetId && args.query) {
-        const found = await searchDriveFirst(args.query);
+        const found = await searchDriveFirst(args.query, accessToken);
         spreadsheetId = found?.id;
       }
 
@@ -413,7 +429,9 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
 
       const range = args.range || 'A1:Z100';
       const result = await googleJson(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`,
+        {},
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', spreadsheetId, range, values: result.values ||[] };
@@ -427,7 +445,8 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
           body: JSON.stringify({
             values: Array.isArray(args.values) ? args.values : args.values?.values ||[],
           }),
-        }
+        },
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', result };
@@ -437,14 +456,14 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
       const presentation = await googleJson('https://slides.googleapis.com/v1/presentations', {
         method: 'POST',
         body: JSON.stringify({ title: args.title }),
-      });
+      }, accessToken);
 
       return { toolName, executedAt, status: 'completed', presentation };
     }
 
     case 'tasks_list': {
       const listId = args.listId || '@default';
-      const result = await googleJson(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(listId)}/tasks`);
+      const result = await googleJson(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(listId)}/tasks`, {}, accessToken);
       return { toolName, executedAt, status: 'completed', tasks: result.items ||[] };
     }
 
@@ -456,14 +475,16 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
           notes: args.notes || '',
           due: args.due || undefined,
         }),
-      });
+      }, accessToken);
 
       return { toolName, executedAt, status: 'completed', task: result };
     }
 
     case 'contacts_search': {
       const result = await googleJson(
-        `https://people.googleapis.com/v1/people:searchContacts?query=${encodeURIComponent(args.query)}&readMask=names,emailAddresses,phoneNumbers,organizations`
+        `https://people.googleapis.com/v1/people:searchContacts?query=${encodeURIComponent(args.query)}&readMask=names,emailAddresses,phoneNumbers,organizations`,
+        {},
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', contacts: result.results ||[] };
@@ -494,7 +515,8 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
               },
             },
           }),
-        }
+        },
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', event: result, meetingLink: result.hangoutLink };
@@ -503,7 +525,9 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
     case 'youtube_search': {
       const limit = Math.min(Number(args.limit || 5), 20);
       const result = await googleJson(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${limit}&q=${encodeURIComponent(args.query)}`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${limit}&q=${encodeURIComponent(args.query)}`,
+        {},
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', videos: result.items ||[] };
@@ -517,7 +541,7 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
             title: args.title,
           },
         }),
-      });
+      }, accessToken);
 
       return { toolName, executedAt, status: 'completed', form: result };
     }
@@ -542,7 +566,8 @@ export async function executeGoogleTool(toolName: string, args: any, accessToken
             metrics,
             dimensions,
           }),
-        }
+        },
+        accessToken
       );
 
       return { toolName, executedAt, status: 'completed', report: result };

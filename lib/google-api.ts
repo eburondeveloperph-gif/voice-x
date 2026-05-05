@@ -45,19 +45,21 @@ export function getCurrentUserEmail() {
   return auth.currentUser?.email || '';
 }
 
-export async function searchDriveFirst(q: string) {
+export async function searchDriveFirst(q: string, passedToken?: string) {
   const escaped = q.replace(/'/g, "\\'");
   const result = await googleJson(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name contains '${escaped}' and trashed = false`)}&fields=files(id,name,mimeType,webViewLink,webContentLink,modifiedTime)&pageSize=1`
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name contains '${escaped}' and trashed = false`)}&fields=files(id,name,mimeType,webViewLink,webContentLink,modifiedTime)&pageSize=1`,
+        {},
+        passedToken
   );
   return result.files?.[0] || null;
 }
 
-export async function createGoogleDoc(title: string, content: string) {
+export async function createGoogleDoc(title: string, content: string, passedToken?: string) {
   const doc = await googleJson('https://docs.googleapis.com/v1/documents', {
     method: 'POST',
     body: JSON.stringify({ title }),
-  });
+  }, passedToken);
 
   if (content?.trim()) {
     await googleJson(`https://docs.googleapis.com/v1/documents/${doc.documentId}:batchUpdate`, {
@@ -72,24 +74,28 @@ export async function createGoogleDoc(title: string, content: string) {
           },
         ],
       }),
-    });
+    }, passedToken);
   }
 
   const file = await googleJson(
-        `https://www.googleapis.com/drive/v3/files/${doc.documentId}?fields=id,name,mimeType,webViewLink`
+        `https://www.googleapis.com/drive/v3/files/${doc.documentId}?fields=id,name,mimeType,webViewLink`,
+        {},
+        passedToken
   );
 
   return { ...doc, driveFile: file };
 }
 
-export async function exportDriveFile(fileId: string, mimeType: string) {
+export async function exportDriveFile(fileId: string, mimeType: string, passedToken?: string) {
   const res = await googleFetch(
-        `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(mimeType)}`
+        `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(mimeType)}`,
+        {},
+        passedToken
   );
   return res.blob();
 }
 
-export async function uploadTextFileToDrive(fileName: string, content: string, mimeType = 'text/plain', folderId?: string) {
+export async function uploadTextFileToDrive(fileName: string, content: string, mimeType = 'text/plain', folderId?: string, passedToken?: string) {
   const metadata: any = { name: fileName };
   if (folderId) metadata.parents =[folderId];
 
@@ -112,7 +118,8 @@ export async function uploadTextFileToDrive(fileName: string, content: string, m
         'Content-Type': `multipart/related; boundary=${boundary}`,
       },
       body: multipartBody,
-    }
+    },
+    passedToken
   ).then(r => r.json());
 }
 

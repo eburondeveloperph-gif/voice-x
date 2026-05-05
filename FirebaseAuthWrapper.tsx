@@ -42,6 +42,11 @@ export default function FirebaseAuthWrapper() {
     provider.addScope('https://www.googleapis.com/auth/drive');
     provider.addScope('https://mail.google.com/');
     provider.addScope('https://www.googleapis.com/auth/calendar');
+    provider.addScope('https://www.googleapis.com/auth/tasks');
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    provider.addScope('https://www.googleapis.com/auth/youtube.readonly');
+    provider.addScope('https://www.googleapis.com/auth/forms.body');
+    provider.addScope('https://www.googleapis.com/auth/analytics.readonly');
     try {
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
