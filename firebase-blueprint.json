@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "authProvider": { "type": "string" },
+        "googleServicesConnected": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "settings": {
+          "type": "object"
+        }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat message",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" },
+        "toolName": { "type": "string" },
+        "toolResult": { "type": "object" },
+        "downloadData": { "type": "string" },
+        "downloadFilename": { "type": "string" },
+        "htmlPreviewData": { "type": "string" },
+        "htmlPreviewFilename": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile"
+    },
+    "users/{userId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Chat messages"
+    }
+  }
+}

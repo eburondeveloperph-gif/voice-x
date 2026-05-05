@@ -1,0 +1,9 @@
+{
+  "name": "Voice Agent EB",
+  "description": "An interactive sandbox for Gemini\u0027s native audio and function calling.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": []
+}

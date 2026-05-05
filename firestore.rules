@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { allow read, write: if false; }
+
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUser(data) {
+      return data.keys().hasAny(['displayName', 'email', 'updatedAt', 'settings']) 
+             && (!data.keys().hasAll(['email']) || data.email is string)
+             && (!data.keys().hasAll(['displayName']) || data.displayName is string);
+    }
+    
+    function isValidMessage(data) {
+      return data.keys().hasAll(['role', 'text', 'timestamp'])
+             && data.role is string && data.role.size() <= 20
+             && data.text is string && data.text.size() <= 500000
+             && data.timestamp is number;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if (
+        isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUser(incoming())
+      );
+      
+      match /messages/{messageId} {
+        allow read, list: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+        allow create: if isSignedIn() && isValidId(userId) && isValidId(messageId) && request.auth.uid == userId && isValidMessage(incoming());
+        allow update: if (
+            isSignedIn() && isValidId(userId) && isValidId(messageId) && request.auth.uid == userId && isValidMessage(incoming())
+        );
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(messageId) && request.auth.uid == userId;
+      }
+    }
+  }
+}
